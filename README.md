@@ -406,6 +406,7 @@ jobs:
           # Execute the required installation command
 
       - name: Update snapshots
+        id: update-snapshots
         uses: jupyterlab/maintainer-tools/.github/actions/update-snapshots@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -420,4 +421,10 @@ jobs:
           #  See specification for https://github.com/iFaxity/wait-on-action `resource`
           server_url: http-get://localhost:8888
           update_script: test:update
+
+      - name: Comment back on the PR
+        run: |
+          hub api repos/${{ github.event.organization }}/${{ github.event.repository }}/issues/${{ github.event.issue.number }}/comments --raw-field 'body=Snapshots updated:\n${{ steps.update-snapshots.outputs.updated-snapshots }}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```

@@ -48,6 +48,11 @@ inputs:
     required: false
     default: test:update
 
+outputs:
+  updated-snapshots:
+    description: "List of updated snapshots"
+    value: ${{ steps.snapshots-changed.outputs.updated-snapshots }}
+
 runs:
   using: composite
   steps:
@@ -60,8 +65,24 @@ runs:
     - name: Setup integration tests
       shell: bash -l {0}
       working-directory: ${{ inputs.test_folder }}
+      env:
+        PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
       run: |
         yarn install
+
+    - name: Set up browser cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/pw-browsers
+        key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+
+    - name: Install browser
+      working-directory: ${{ inputs.test_folder }}
+      env:
+        PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+      run:
         yarn run playwright install ${{ inputs.chromium }}
 
     - name: Wait for the server
@@ -75,6 +96,12 @@ runs:
       shell: bash -l {0}
       working-directory: ${{ inputs.test_folder }}
       run: yarn run ${{ inputs.update_script }}
+
+    - id: snapshots-changed
+      shell: bash -l {0}
+      working-directory: ${{ inputs.test_folder }}
+      run: |
+        echo "updated-snapshots=$(git ls-files --exclude-standard -om)" >> $GITHUB_OUTPUT
 
     - name: Compress snapshots
       if: ${{ runner.os == 'Linux' }}
